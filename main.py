@@ -15,13 +15,22 @@ def get_user_access(user: str):
         GET /api/user-access?user=Alice
     """
     access_list = []
-
-    # Iterate through all policies to find what the user has access to
-    for policy in enforcer.get_policy():
-        role, domain, obj, act = policy
-        # Check if user has this role in this domain using enforce directly
-        if enforcer.enforce(user, domain, obj, act):
-            access_list.append({"resource_type": obj, "action": act, "domain": domain})
+    
+    # Define common resource types and actions to check for wildcard permissions
+    resource_types = ["property", "meter"]
+    actions = ["read", "write"]
+    domains = set(domain for _, domain, _, _ in enforcer.get_policy())
+    
+    # Check permissions for each combination
+    for domain in domains:
+        for resource_type in resource_types:
+            for action in actions:
+                if enforcer.enforce(user, domain, resource_type, action):
+                    access_list.append({
+                        "resource_type": resource_type,
+                        "action": action,
+                        "domain": domain
+                    })
 
     if not access_list:
         raise HTTPException(status_code=404, detail="No access found for the user.")
@@ -42,10 +51,14 @@ def get_resource_access(
     # Get all domains from policies
     domains = set(domain for _, domain, _, _ in enforcer.get_policy())
 
+    # Get all role assignments to find actual users
+    role_assignments = enforcer.get_grouping_policy()
+    users = set(user for user, _, _ in role_assignments)
+
     # Iterate through all domains and users to check access
     for domain in domains:
         domain_users = []
-        for user in enforcer.get_all_subjects():
+        for user in users:
             if enforcer.enforce(user, domain, resource_type, action):
                 domain_users.append(user)
         if domain_users:
