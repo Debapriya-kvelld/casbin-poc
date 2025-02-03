@@ -1,0 +1,11 @@
+# Policies: p = sub, dom, obj, act
+p, admin, OrgA, property, read
+p, admin, OrgA, meter, write
+p, analyst, OrgB, property, read
+p, admin, OrgB, meter, read
+
+# Role assignments: g = sub, role, domain
+g, Alice, admin, OrgA
+g, Bob, analyst, OrgB
+g, Cathy, admin, OrgB 
+g, Alice, analyst, OrgB
