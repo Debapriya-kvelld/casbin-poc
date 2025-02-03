@@ -11,8 +11,8 @@ The purpose of this POC is to showcase how to:
 
 ## Features
 
-- API to fetch all resources and actions accessible by a user
-- API to fetch all users/accounts with access to a specific resource and action
+- API to fetch all resources and actions accessible by a user across domains
+- API to fetch all users/accounts with access to a specific resource and action, grouped by domain
 - Support for role inheritance within domains
 - Flexible policy management through CSV files
 
@@ -21,7 +21,7 @@ The purpose of this POC is to showcase how to:
 1. Clone the repository
 2. Install dependencies:
    ```bash
-   pip install -r requirements.txt
+   pip install fastapi uvicorn casbin
    ```
 3. Run the application:
    ```bash
@@ -31,10 +31,15 @@ The purpose of this POC is to showcase how to:
 ## API Endpoints
 
 ### 1. Get User Access
-Fetches all resources and actions a user has access to.
+Fetches all resources and actions a user has access to across all domains.
 
 ```
 GET /api/user-access?user={username}
+```
+
+Example Request:
+```bash
+curl "http://localhost:8000/api/user-access?user=Alice"
 ```
 
 Example Response:
@@ -43,16 +48,22 @@ Example Response:
   "user": "Alice",
   "access": [
     {"resource_type": "property", "action": "read", "domain": "OrgA"},
-    {"resource_type": "meter", "action": "write", "domain": "OrgA"}
+    {"resource_type": "meter", "action": "write", "domain": "OrgA"},
+    {"resource_type": "property", "action": "read", "domain": "OrgB"}
   ]
 }
 ```
 
 ### 2. Get Resource Access
-Fetches all users who can access a specific resource for a specific action.
+Fetches all users who can access a specific resource for a specific action, grouped by domain.
 
 ```
-GET /api/resource-access?resource_type={type}&action={action}&domain={domain}
+GET /api/resource-access?resource_type={type}&action={action}
+```
+
+Example Request:
+```bash
+curl "http://localhost:8000/api/resource-access?resource_type=property&action=read"
 ```
 
 Example Response:
@@ -60,8 +71,10 @@ Example Response:
 {
   "resource_type": "property",
   "action": "read",
-  "domain": "OrgB",
-  "users": ["Bob"]
+  "access_by_domain": {
+    "OrgA": ["Alice"],
+    "OrgB": ["Bob", "Alice"]
+  }
 }
 ```
 
@@ -74,13 +87,37 @@ Policies are stored in `casbin_policy.csv`. The file supports two types of rules
    ```
    p, role, domain, resource, action
    ```
-   Example: `p, admin, OrgA, property, read`
+   Examples:
+   ```
+   p, admin, OrgA, property, read
+   p, analyst, OrgB, property, read
+   ```
 
 2. Role Assignments:
    ```
    g, user, role, domain
    ```
-   Example: `g, Alice, admin, OrgA`
+   Examples:
+   ```
+   g, Alice, admin, OrgA
+   g, Alice, analyst, OrgB
+   ```
+
+### Policy File Structure
+The policy file is organized into two sections:
+1. Policy definitions (prefixed with 'p')
+2. Role assignments (prefixed with 'g')
+
+Example policy file:
+```csv
+# Policies
+p, admin, OrgA, property, read
+p, admin, OrgA, meter, write
+
+# Role assignments
+g, Alice, admin, OrgA
+g, Bob, analyst, OrgB
+```
 
 ### Extending Functionality
 
@@ -98,7 +135,23 @@ To modify the access control model:
 - Consider implementing policy persistence in a database for production use
 - Implement proper authentication before the authorization layer
 - Regularly audit access patterns and permissions
+- Keep the Casbin model file (`casbin.conf`) and policy file (`casbin_policy.csv`) in a secure location
+
+## Testing
+
+You can test the API endpoints using curl or any HTTP client:
+
+```bash
+# Test user access for Alice
+curl "http://localhost:8000/api/user-access?user=Alice"
+
+# Test resource access for property read permission
+curl "http://localhost:8000/api/resource-access?resource_type=property&action=read"
+```
 
 ## Contributing
 
-Feel free to submit issues and enhancement requests!
+Feel free to submit issues and enhancement requests! When contributing:
+1. Fork the repository
+2. Create a feature branch
+3. Submit a pull request with a clear description of changes
