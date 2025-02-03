@@ -16,17 +16,36 @@ The purpose of this POC is to showcase how to:
 - Support for role inheritance within domains
 - Flexible policy management through CSV files
 
-## Setup and Installation
+## Project Setup
 
-1. Clone the repository
-2. Install dependencies:
+### Prerequisites
+- Python 3.12 or higher
+- UV package manager (https://github.com/astral-sh/uv)
+
+### Installation
+
+1. Clone the repository:
    ```bash
-   pip install fastapi uvicorn casbin
+   git clone <repository-url>
+   cd casbin-poc
    ```
-3. Run the application:
+
+2. Initialize the project with UV:
    ```bash
-   uvicorn main:app --reload
+   uv init
    ```
+
+3. Install dependencies:
+   ```bash
+   uv sync
+   ```
+
+4. Run the application:
+   ```bash
+   uv run uvicorn main:app --reload
+   ```
+
+The API will be available at http://127.0.0.1:8000
 
 ## API Endpoints
 
