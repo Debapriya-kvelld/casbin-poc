@@ -1,14 +1,42 @@
-# Policies: p = sub, dom, obj, act
-p, admin, OrgA, property, read
-p, admin, OrgA, meter, write
-p, analyst, OrgB, property, read
-p, admin, OrgB, meter, read
-p, global_admin, *, *, *
+# Policies: p = sub, dom, obj, act, res_id
+
+# Domain A policies
+# Admin has full access to all resources
+p, admin, DomainA, property, read, *
+p, admin, DomainA, property, write, *
+p, admin, DomainA, meter, read, *
+p, admin, DomainA, meter, write, *
+
+# Viewer has read-only access to specific resources
+p, viewer, DomainA, property, read, prop_1
+p, viewer, DomainA, meter, read, device_1
+
+# Domain B policies
+# Manager has full access to specific resources
+p, manager, DomainB, property, read, prop_1
+p, manager, DomainB, property, write, prop_2
+p, manager, DomainB, meter, read, sensor_1
+p, manager, DomainB, meter, write, sensor_1
+
+# Analyst has read access to all resources
+p, analyst, DomainB, property, read, *
+p, analyst, DomainB, meter, read, *
+
+# Global admin has access to everything
+p, global_admin, *, *, *, *
 
 # Role assignments: g = sub, role, domain
-g, Alice, admin, OrgA
-g, Bob, analyst, OrgB
-g, Cathy, admin, OrgB 
-g, Alice, analyst, OrgB
-g, Sam, global_admin, OrgA
-g, Sam, analyst, OrgB
+# DomainA users
+g, alice, admin, DomainA
+g, bob, viewer, DomainA
+
+# DomainB users
+g, carol, manager, DomainB
+g, dave, analyst, DomainB
+
+# Global admin user
+g, super, global_admin, *
+
+# Multi-domain user
+g, eve, viewer, DomainA
+g, eve, analyst, DomainB

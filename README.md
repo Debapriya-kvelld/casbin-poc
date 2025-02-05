@@ -1,17 +1,19 @@
 # Casbin Access Control POC
 
-This project demonstrates the implementation of Role-Based Access Control (RBAC) with domain and resources support using Casbin and FastAPI.
+This project demonstrates the implementation of Role-Based Access Control (RBAC) with domain and resource-specific access control using Casbin and FastAPI.
 
 ## Project Purpose
 
 The purpose of this POC is to showcase how to:
 - Implement access control using Casbin
+- Support resource-specific permissions with wildcard capabilities
 - Dynamically query user-resource access and resource-user access based on policies
 - Support multi-tenancy through domain-based access control
 
 ## Features
 
 - API to fetch all resources and actions accessible by a user across domains
+- Support for both wildcard (*) and specific resource ID access control
 - API to fetch all users/accounts with access to a specific resource and action, grouped by domain
 - Support for role inheritance within domains
 - Flexible policy management through CSV files
@@ -58,17 +60,26 @@ GET /api/user-access?user={username}
 
 Example Request:
 ```bash
-curl "http://localhost:8000/api/user-access?user=Alice"
+curl "http://localhost:8000/api/user-access?user=alice"
 ```
 
 Example Response:
 ```json
 {
-  "user": "Alice",
+  "user": "alice",
   "access": [
-    {"resource_type": "property", "action": "read", "domain": "OrgA"},
-    {"resource_type": "meter", "action": "write", "domain": "OrgA"},
-    {"resource_type": "property", "action": "read", "domain": "OrgB"}
+    {
+      "resource_type": "property",
+      "action": "read",
+      "domain": "DomainA",
+      "resource_id": "*"
+    },
+    {
+      "resource_type": "property",
+      "action": "write",
+      "domain": "DomainA",
+      "resource_id": "*"
+    }
   ]
 }
 ```
@@ -77,12 +88,12 @@ Example Response:
 Fetches all users who can access a specific resource for a specific action, grouped by domain.
 
 ```
-GET /api/resource-access?resource_type={type}&action={action}
+GET /api/resource-access?resource_type={type}&action={action}&resource_id={id}
 ```
 
 Example Request:
 ```bash
-curl "http://localhost:8000/api/resource-access?resource_type=property&action=read"
+curl "http://localhost:8000/api/resource-access?resource_type=property&action=read&resource_id=prop_1"
 ```
 
 Example Response:
@@ -90,9 +101,10 @@ Example Response:
 {
   "resource_type": "property",
   "action": "read",
+  "resource_id": "prop_1",
   "access_by_domain": {
-    "OrgA": ["Alice"],
-    "OrgB": ["Bob", "Alice"]
+    "DomainA": ["alice", "bob"],
+    "DomainB": ["carol"]
   }
 }
 ```
@@ -104,12 +116,12 @@ Policies are stored in `casbin_policy.csv`. The file supports two types of rules
 
 1. Policy Rules:
    ```
-   p, role, domain, resource, action
+   p, role, domain, resource, action, resource_id
    ```
    Examples:
    ```
-   p, admin, OrgA, property, read
-   p, analyst, OrgB, property, read
+   p, admin, DomainA, property, read, *        # Wildcard access to all resources
+   p, viewer, DomainA, property, read, prop_1  # Access to specific resource
    ```
 
 2. Role Assignments:
@@ -118,25 +130,50 @@ Policies are stored in `casbin_policy.csv`. The file supports two types of rules
    ```
    Examples:
    ```
-   g, Alice, admin, OrgA
-   g, Alice, analyst, OrgB
+   g, alice, admin, DomainA
+   g, bob, viewer, DomainA
    ```
 
 ### Policy File Structure
-The policy file is organized into two sections:
+The policy file is organized into sections:
 1. Policy definitions (prefixed with 'p')
+   - Can use '*' for wildcard access to all resources
+   - Can specify exact resource IDs for fine-grained control
 2. Role assignments (prefixed with 'g')
 
 Example policy file:
 ```csv
-# Policies
-p, admin, OrgA, property, read
-p, admin, OrgA, meter, write
+# Policies with wildcard access
+p, admin, DomainA, property, read, *
+p, admin, DomainA, meter, write, *
+
+# Policies with specific resource access
+p, viewer, DomainA, property, read, prop_1
+p, viewer, DomainA, meter, read, device_1
 
 # Role assignments
-g, Alice, admin, OrgA
-g, Bob, analyst, OrgB
+g, alice, admin, DomainA
+g, bob, viewer, DomainA
 ```
+
+### Access Control Patterns
+
+The system supports several access control patterns:
+
+1. Full Access with Wildcards:
+   ```csv
+   p, admin, DomainA, property, read, *
+   ```
+   Grants access to all resources of type 'property' in DomainA
+
+2. Specific Resource Access:
+   ```csv
+   p, viewer, DomainA, property, read, prop_1
+   ```
+   Grants access only to resource 'prop_1'
+
+3. Mixed Access Patterns:
+   Users can have both wildcard and specific resource access in different domains
 
 ### Extending Functionality
 
@@ -161,11 +198,14 @@ To modify the access control model:
 You can test the API endpoints using curl or any HTTP client:
 
 ```bash
-# Test user access for Alice
-curl "http://localhost:8000/api/user-access?user=Alice"
+# Test user access for alice (admin with wildcard access)
+curl "http://localhost:8000/api/user-access?user=alice"
 
-# Test resource access for property read permission
-curl "http://localhost:8000/api/resource-access?resource_type=property&action=read"
+# Test user access for bob (viewer with specific resource access)
+curl "http://localhost:8000/api/user-access?user=bob"
+
+# Test resource access for specific property
+curl "http://localhost:8000/api/resource-access?resource_type=property&action=read&resource_id=prop_1"
 ```
 
 ## Contributing
